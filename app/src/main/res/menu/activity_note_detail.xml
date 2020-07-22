@@ -7,4 +7,12 @@
         app:showAsAction="always"
         android:icon="@drawable/baseline_save_white_24dp"
         android:title="Enregistrer"/>
+
+    <item
+        android:id="@+id/action_delete"
+        app:showAsAction="ifRoom"
+        android:icon="@drawable/baseline_delete_white_24dp"
+        android:title="Supprimer"/>
+
+
 </menu>

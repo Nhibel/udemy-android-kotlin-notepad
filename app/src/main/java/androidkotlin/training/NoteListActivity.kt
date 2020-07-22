@@ -4,16 +4,22 @@ import android.app.Activity
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Parcelable
 import android.util.Log
 import android.view.View
+import androidkotlin.training.utils.loadNotes
+import androidkotlin.training.utils.persistNote
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.android.synthetic.main.activity_note_list.*
 
 class NoteListActivity : AppCompatActivity(), View.OnClickListener {
 
     lateinit var notes: MutableList<Note>
     lateinit var adapter: NoteAdapter
+    lateinit var coordinatorLayout : CoordinatorLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,22 +28,22 @@ class NoteListActivity : AppCompatActivity(), View.OnClickListener {
         val toolbar = toolbar
         setSupportActionBar(toolbar)
 
+        val createNoteFab = create_note_fab
+        createNoteFab.setOnClickListener(this)
 
-        notes = mutableListOf<Note>()
-
-        notes.add(Note("Note 1", "Blablabla"))
-        notes.add(Note("Note 2", "machin truc"))
-        notes.add(Note("Note 3", "truc bidule"))
-        notes.add(Note("Note 4", "Schmilblick"))
+        notes = loadNotes(this)
 
         adapter = NoteAdapter(notes, this)
 
         val recyclerView = notes_recycler_view
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
+
+        coordinatorLayout = coordinator_layout
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != Activity.RESULT_OK || data == null) {
             return
         }
@@ -48,26 +54,62 @@ class NoteListActivity : AppCompatActivity(), View.OnClickListener {
 
     private fun processEditNoteResult(data: Intent) {
         val noteIndex = data.getIntExtra(NoteDetailActivity.EXTRA_NOTE_INDEX, -1)
-        val note = data.getParcelableExtra<Note>(NoteDetailActivity.EXTRA_NOTE)
-        saveNote(note!!, noteIndex)
+
+        when(data.action) {
+            NoteDetailActivity.ACTION_SAVE_NOTE -> {
+                val note = data.getParcelableExtra<Note>(NoteDetailActivity.EXTRA_NOTE)
+                saveNote(note!!, noteIndex)
+            }
+            NoteDetailActivity.ACTION_DELETE_NOTE -> {
+                deleteNote(noteIndex)
+            }
+        }
     }
 
     override fun onClick(view: View) {
         if (view.tag != null) {
             showNoteDetail(view.tag as Int)
+        } else {
+            when(view.id) {
+                R.id.create_note_fab -> createNewNote()
+            }
         }
     }
 
+    fun createNewNote() {
+        showNoteDetail(-1)
+    }
+
     fun saveNote(note: Note, noteIndex: Int) {
-        notes[noteIndex] = note
+        persistNote(this, note)
+        if (noteIndex < 0) {
+            notes.add(0, note)
+        } else {
+            notes[noteIndex] = note
+        }
         adapter.notifyDataSetChanged()
     }
 
+    private fun deleteNote(noteIndex: Int) {
+        if (noteIndex < 0) {
+            return
+        }
+        val note = notes.removeAt(noteIndex)
+        androidkotlin.training.utils.deleteNote(this, note)
+        adapter.notifyDataSetChanged()
+
+        Snackbar.make(coordinatorLayout, "${note.title} supprimé", Snackbar.LENGTH_SHORT).show()
+    }
+
     fun showNoteDetail(noteIndex: Int) {
-        val note = notes[noteIndex]
+        val note = if (noteIndex < 0) {
+            Note()
+        } else {
+            notes[noteIndex]
+        }
 
         val intent = Intent(this, NoteDetailActivity::class.java)
-        intent.putExtra(NoteDetailActivity.EXTRA_NOTE, note)
+        intent.putExtra(NoteDetailActivity.EXTRA_NOTE, note as Parcelable)
         intent.putExtra(NoteDetailActivity.EXTRA_NOTE_INDEX, noteIndex)
         startActivityForResult(intent, NoteDetailActivity.REQUEST_EDIT_NOTE)
     }

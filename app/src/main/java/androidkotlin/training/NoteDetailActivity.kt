@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Parcelable
 import android.view.Menu
 import android.view.MenuItem
 import android.widget.TextView
@@ -15,6 +16,9 @@ class NoteDetailActivity : AppCompatActivity() {
         val REQUEST_EDIT_NOTE = 1
         val EXTRA_NOTE = "note"
         val EXTRA_NOTE_INDEX = "noteIndex"
+
+        val ACTION_SAVE_NOTE = "androidkotlin.training.notepad.actions.ACTION_SAVE_NOTE"
+        val ACTION_DELETE_NOTE = "androidkotlin.training.notepad.actions.ACTION_DELETE_NOTE"
     }
 
     lateinit var note: Note
@@ -52,16 +56,39 @@ class NoteDetailActivity : AppCompatActivity() {
                 saveNote()
                 return true
             }
+            R.id.action_delete -> {
+                showConfirmDeleteNoteDialog()
+                return true
+            }
             else -> return super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun showConfirmDeleteNoteDialog() {
+        val confirmFragment = ConfirmDeleteNoteDialogFragment(note.title)
+        confirmFragment.listener = object: ConfirmDeleteNoteDialogFragment.ConfirmDeleteDialogListener {
+            override fun onDialogPositiveClick() {
+                deleteNote()
+            }
+
+            override fun onDialogNegativeClick() {}
+        }
+        confirmFragment.show(supportFragmentManager, "confirmDeleteDialog")
     }
 
     fun saveNote() {
         note.title = titleView.text.toString()
         note.text = textView.text.toString()
 
-        intent = Intent()
-        intent.putExtra(EXTRA_NOTE, note)
+        intent = Intent(ACTION_SAVE_NOTE)
+        intent.putExtra(EXTRA_NOTE, note as Parcelable)
+        intent.putExtra(EXTRA_NOTE_INDEX, noteIndex)
+        setResult(Activity.RESULT_OK, intent)
+        finish()
+    }
+
+    fun deleteNote() {
+        intent = Intent(ACTION_DELETE_NOTE)
         intent.putExtra(EXTRA_NOTE_INDEX, noteIndex)
         setResult(Activity.RESULT_OK, intent)
         finish()
